@@ -188,10 +188,11 @@ class HeaderCompareApp(tk.Tk):
         self.on_override_delim_change()
 
 
+
     def browse_folder(self, var):
         popup = tk.Toplevel(self)
         popup.title("Select Option")
-        popup.geometry("120x100")
+        popup.geometry("160x100")
         self.eval(f'tk::PlaceWindow {str(popup)} center')
 
         def choose_files():
@@ -209,7 +210,6 @@ class HeaderCompareApp(tk.Tk):
 
         ttk.Button(popup, text="File", command=choose_files).pack(padx=10, pady=5, fill='x')
         ttk.Button(popup, text="FolderS", command=choose_folder).pack(padx=10, pady=5, fill='x')
-
 
     def browse_report(self):
         fn = filedialog.asksaveasfilename(defaultextension='.txt', filetypes=[("Text","*.txt"),("CSV","*.csv"),("All","*.*")])
@@ -315,6 +315,7 @@ class HeaderCompareApp(tk.Tk):
             self.override_delimiter = DELIMITERS.get(sel, sel)
             self.override_custom_active = False
 
+
     def reset_override_delimiter(self):
         self.delimiter_name.set('None')
         self.override_custom_delim.set('')
@@ -404,11 +405,13 @@ class HeaderCompareApp(tk.Tk):
         return best_delim
 
     def get_effective_delimiter(self, fname):
+        # Use override if applied
         if self.override_delimiter is not None:
             return self.override_delimiter
 
+        # Fallback to per-file selection
         if fname not in self.delim_vars:
-            return None  # Safe fallback if missing
+            return None
 
         delim_name = self.delim_vars[fname].get()
         if delim_name == 'None':
@@ -417,13 +420,7 @@ class HeaderCompareApp(tk.Tk):
             val = self.delim_custom_vars.get(fname, tk.StringVar()).get()
             return val if val else None
         else:
-            delim = DELIMITERS.get(delim_name)
-            if delim is None:
-                # Fallback: Treat as custom delimiter not in list
-                self.delim_vars[fname].set("Custom")
-                self.delim_custom_vars[fname].set(delim_name)
-                return delim_name
-            return delim
+            return DELIMITERS.get(delim_name, delim_name)    
 
     def compare_headers(self, main_cols, comp_cols):
         mc = [clean_col_name(c) for c in main_cols]
@@ -483,16 +480,10 @@ class HeaderCompareApp(tk.Tk):
                 continue
             self.current_main_file, self.current_comp_file = mf, cf
 
-            if self.override_delimiter is not None:
-                delim = self.override_delimiter
-            else:
-                sel = self.delim_vars[mf].get()
-                if sel in DELIMITERS:
-                    delim = DELIMITERS[sel]
-                else:
-                    delim = None
+            delim = self.get_effective_delimiter(mf)  # <-- unified call
 
-            mp = os.path.join(mfld, mf); cp = os.path.join(cfl, cf)
+            mp = os.path.join(mfld, mf)
+            cp = os.path.join(cfl, cf)
             mcols, me = get_header(mp, delim)
             ccols, ce = get_header(cp, delim)
 
